@@ -403,22 +403,23 @@ const Home = () => {
             }
 
             if (selectedPlanet) {
-                const selectedMeshObject = planetsMeshesRef.current.find(p => p.mesh.name === selectedPlanet);
-                const mesh = selectedMeshObject?.mesh || sunRef.current?.mesh;
+    const selectedMeshObject = planetsMeshesRef.current.find(p => p.mesh.name === selectedPlanet);
+    const mesh = selectedMeshObject?.mesh || sunRef.current?.mesh;
 
-                if (mesh) {
-                    const planetWorldPos = new THREE.Vector3();
-                    mesh.getWorldPosition(planetWorldPos);
+    if (mesh) {
+        const planetWorldPos = new THREE.Vector3();
+        mesh.getWorldPosition(planetWorldPos);
 
-                    // Update camera position to follow the planet
-                    const desiredCameraPos = new THREE.Vector3().copy(planetWorldPos).add(cameraOffset.current);
-                    cameraRef.current.position.copy(desiredCameraPos);
+        // Smooth camera movement towards desired position
+        const desiredCameraPos = new THREE.Vector3().copy(planetWorldPos).add(cameraOffset.current);
+        cameraRef.current.position.lerp(desiredCameraPos, 0.05); // Adjust the interpolation speed here (0.05 is smooth)
 
-                    // Update controls target to the planet position
-                    controlsRef.current.target.copy(planetWorldPos);
-                    controlsRef.current.update();
-                }
-            }
+        // Smooth controls target update
+        controlsRef.current.target.lerp(planetWorldPos, 0.05);
+        controlsRef.current.update();
+    }
+}
+
 
             controls.update();
             renderer.render(scene, camera);
