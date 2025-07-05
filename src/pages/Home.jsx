@@ -12,6 +12,12 @@ import Saturn from '../componets/Saturn.jsx';
 import Uranus from '../componets/Uranus.jsx';
 import Venus from '../componets/Venus.jsx';
 
+const textureModules = import.meta.glob('../assets/textures/*.{jpg,png}', { eager: true });
+const getTextureUrl = (fileName) => {
+    const path = `../assets/textures/${fileName}`;
+    return textureModules[path]?.default || '';
+};
+
 const Home = () => {
     const mountRef = useRef(null);
     const [loading, setLoading] = useState(true);
@@ -45,10 +51,17 @@ const Home = () => {
     const getPlanetData = useCallback((name) => {
         const data = planetsDataRef.current.find(p => p.name === name);
         if (name === 'Sun') {
-            return { name: 'Sun', size: 10, selfRotationSpeed: 0.002, texture: '/src/assets/textures/sun.jpg', description: 'The Sun is the star at the center of the Solar System. It is a nearly perfect ball of hot plasma, heated to incandescence by nuclear fusion reactions in its core.' };
+            return {
+                name: 'Sun',
+                size: 10,
+                selfRotationSpeed: 0.002,
+                texture: getTextureUrl('sun.jpg'),
+                description: 'The Sun is the star at the center of the Solar System. It is a nearly perfect ball of hot plasma, heated to incandescence by nuclear fusion reactions in its core.'
+            };
         }
         return data;
     }, []);
+
 
     useEffect(() => {
         const scene = new THREE.Scene();
