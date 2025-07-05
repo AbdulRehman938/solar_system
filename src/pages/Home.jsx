@@ -12,11 +12,8 @@ import Saturn from '../componets/Saturn.jsx';
 import Uranus from '../componets/Uranus.jsx';
 import Venus from '../componets/Venus.jsx';
 
-const textureModules = import.meta.glob('../assets/textures/*.{jpg,png}', { eager: true });
-const getTextureUrl = (fileName) => {
-    const path = `../assets/textures/${fileName}`;
-    return textureModules[path]?.default || '';
-};
+const getTextureUrl = (fileName) => `/textures/${fileName}`;
+
 
 const Home = () => {
     const mountRef = useRef(null);
@@ -147,22 +144,22 @@ const Home = () => {
         const bgSphere = new THREE.Mesh(
             new THREE.SphereGeometry(1000, 64, 64),
             new THREE.MeshBasicMaterial({
-                map: loader.load('/src/assets/textures/milkyway.jpg'),
+                map: loader.load('/textures/milkyway.jpg'),
                 side: THREE.BackSide,
             })
         );
         scene.add(bgSphere);
 
         planetsDataRef.current = [
-            { name: 'Sun', size: 10, selfRotationSpeed: 0.002, texture: '/src/assets/textures/sun.jpg', description: 'The Sun is the star at the center of the Solar System. It is a nearly perfect ball of hot plasma, heated to incandescence by nuclear fusion reactions in its core.' },
-            { name: 'Mercury', size: 1, distance: 20, revolutionSpeed: 0.01, selfRotationSpeed: 0.015, texture: '/src/assets/textures/mercury.jpg', description: 'Mercury is the smallest planet...' },
-            { name: 'Venus', size: 1.5, distance: 30, revolutionSpeed: 0.008, selfRotationSpeed: 0.005, texture: '/src/assets/textures/venus.jpg', description: 'Venus is the second planet...' },
-            { name: 'Earth', size: 1.7, distance: 40, revolutionSpeed: 0.007, selfRotationSpeed: 0.01, texture: '/src/assets/textures/earth.jpg', description: 'Earth is the third planet...' },
-            { name: 'Mars', size: 1.3, distance: 53, revolutionSpeed: 0.006, selfRotationSpeed: 0.009, texture: '/src/assets/textures/mars.jpg', description: 'Mars is the fourth planet...' },
-            { name: 'Jupiter', size: 4, distance: 65, revolutionSpeed: 0.004, selfRotationSpeed: 0.02, texture: '/src/assets/textures/jupiter.jpg', description: 'Jupiter is the fifth planet...' },
-            { name: 'Saturn', size: 3.5, distance: 85, revolutionSpeed: 0.003, selfRotationSpeed: 0.018, texture: '/src/assets/textures/saturn.jpg', description: 'Saturn is the sixth planet...' },
-            { name: 'Uranus', size: 2.5, distance: 100, revolutionSpeed: 0.002, selfRotationSpeed: 0.008, texture: '/src/assets/textures/uranus.jpg', description: 'Uranus is the seventh planet...' },
-            { name: 'Neptune', size: 2.4, distance: 110, revolutionSpeed: 0.0015, selfRotationSpeed: 0.007, texture: '/src/assets/textures/neptune.jpg', description: 'Neptune is the eighth planet...' },
+            { name: 'Sun', size: 10, selfRotationSpeed: 0.002, texture: '/textures/sun.jpg', description: 'The Sun is the star at the center of the Solar System. It is a nearly perfect ball of hot plasma, heated to incandescence by nuclear fusion reactions in its core.' },
+            { name: 'Mercury', size: 1, distance: 20, revolutionSpeed: 0.01, selfRotationSpeed: 0.015, texture: '/textures/mercury.jpg', description: 'Mercury is the smallest planet...' },
+            { name: 'Venus', size: 1.5, distance: 30, revolutionSpeed: 0.008, selfRotationSpeed: 0.005, texture: '/textures/venus.jpg', description: 'Venus is the second planet...' },
+            { name: 'Earth', size: 1.7, distance: 40, revolutionSpeed: 0.007, selfRotationSpeed: 0.01, texture: '/textures/earth.jpg', description: 'Earth is the third planet...' },
+            { name: 'Mars', size: 1.3, distance: 53, revolutionSpeed: 0.006, selfRotationSpeed: 0.009, texture: '/textures/mars.jpg', description: 'Mars is the fourth planet...' },
+            { name: 'Jupiter', size: 4, distance: 65, revolutionSpeed: 0.004, selfRotationSpeed: 0.02, texture: '/textures/jupiter.jpg', description: 'Jupiter is the fifth planet...' },
+            { name: 'Saturn', size: 3.5, distance: 85, revolutionSpeed: 0.003, selfRotationSpeed: 0.018, texture: '/textures/saturn.jpg', description: 'Saturn is the sixth planet...' },
+            { name: 'Uranus', size: 2.5, distance: 100, revolutionSpeed: 0.002, selfRotationSpeed: 0.008, texture: '/textures/uranus.jpg', description: 'Uranus is the seventh planet...' },
+            { name: 'Neptune', size: 2.4, distance: 110, revolutionSpeed: 0.0015, selfRotationSpeed: 0.007, texture: '/textures/neptune.jpg', description: 'Neptune is the eighth planet...' },
         ];
 
         const colorMap = {
@@ -193,7 +190,7 @@ const Home = () => {
             mesh.add(glow);
 
             if (planetData.name === 'Saturn') {
-                const ringTexture = loader.load('/src/assets/textures/saturn_ring.jpg');
+                const ringTexture = loader.load('/textures/saturn_ring.jpg');
                 const ringGeometry = new THREE.RingGeometry(planetData.size + 1.5, planetData.size + 5.5, 128);
                 const ringMaterial = new THREE.MeshBasicMaterial({
                     map: ringTexture,
@@ -322,7 +319,7 @@ const Home = () => {
 
             // Add Saturn's rings
             if (planetData.name === 'Saturn') {
-                const ringTexture = loader.load('/src/assets/textures/saturn_ring.jpg');
+                const ringTexture = loader.load('/textures/saturn_ring.jpg');
                 const actualPlanetRadius = planetSize * 0.3;
                 const ringInnerRadius = actualPlanetRadius * 1.2;
                 const ringOuterRadius = actualPlanetRadius * 2.2;
@@ -403,22 +400,22 @@ const Home = () => {
             }
 
             if (selectedPlanet) {
-    const selectedMeshObject = planetsMeshesRef.current.find(p => p.mesh.name === selectedPlanet);
-    const mesh = selectedMeshObject?.mesh || sunRef.current?.mesh;
+                const selectedMeshObject = planetsMeshesRef.current.find(p => p.mesh.name === selectedPlanet);
+                const mesh = selectedMeshObject?.mesh || sunRef.current?.mesh;
 
-    if (mesh) {
-        const planetWorldPos = new THREE.Vector3();
-        mesh.getWorldPosition(planetWorldPos);
+                if (mesh) {
+                    const planetWorldPos = new THREE.Vector3();
+                    mesh.getWorldPosition(planetWorldPos);
 
-        // Smooth camera movement towards desired position
-        const desiredCameraPos = new THREE.Vector3().copy(planetWorldPos).add(cameraOffset.current);
-        cameraRef.current.position.lerp(desiredCameraPos, 0.05); // Adjust the interpolation speed here (0.05 is smooth)
+                    // Smooth camera movement towards desired position
+                    const desiredCameraPos = new THREE.Vector3().copy(planetWorldPos).add(cameraOffset.current);
+                    cameraRef.current.position.lerp(desiredCameraPos, 0.05); // Adjust the interpolation speed here (0.05 is smooth)
 
-        // Smooth controls target update
-        controlsRef.current.target.lerp(planetWorldPos, 0.05);
-        controlsRef.current.update();
-    }
-}
+                    // Smooth controls target update
+                    controlsRef.current.target.lerp(planetWorldPos, 0.05);
+                    controlsRef.current.update();
+                }
+            }
 
 
             controls.update();
