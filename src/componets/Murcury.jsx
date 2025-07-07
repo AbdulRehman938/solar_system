@@ -9,7 +9,7 @@ const Mercury = () => {
             <div className="flex justify-center items-center w-full h-full bg-black py-6">
                 <div className="relative w-60 h-60 rounded-full overflow-visible">
                     <img
-                        src="https://upload.wikimedia.org/wikipedia/commons/6/68/Mercury_in_true_color.jpg"
+                        src="https://imgs.search.brave.com/MvHi76yLKfHbmLPGJWbvy2WOzU_qNgUhoiATPbGiZjM/rs:fit:860:0:0:0/g:ce/aHR0cHM6Ly93YWxs/cGFwZXJjYXZlLmNv/bS93cC93cDQwNDcy/MjYuanBn"
                         alt="Mercury Real"
                         className="absolute top-0 left-0 w-full h-full object-cover rounded-full"
                     />

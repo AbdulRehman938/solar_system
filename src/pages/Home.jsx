@@ -144,7 +144,7 @@ const Home = () => {
         const bgSphere = new THREE.Mesh(
             new THREE.SphereGeometry(1000, 64, 64),
             new THREE.MeshBasicMaterial({
-                map: loader.load('/textures/milkyWay.jpg'),
+                map: loader.load('/textures/milkyWay.jpeg'),
                 side: THREE.BackSide,
             })
         );
