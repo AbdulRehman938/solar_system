@@ -11,9 +11,10 @@ import Neptune from '../componets/Neptune.jsx';
 import Saturn from '../componets/Saturn.jsx';
 import Uranus from '../componets/Uranus.jsx';
 import Venus from '../componets/Venus.jsx';
+import Moon from '../componets/Moon.jsx';
+
 
 const getTextureUrl = (fileName) => `/textures/${fileName}`;
-
 
 const Home = () => {
     const mountRef = useRef(null);
@@ -37,12 +38,20 @@ const Home = () => {
     const animationFrameId = useRef(null);
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const cameraOffset = useRef(new THREE.Vector3());
+    const guiControllers = useRef({});
+    const [isPaused, setIsPaused] = useState(false);
+    const isPausedRef = useRef(false);
+    const planetTailsRef = useRef({});
+
+
+
 
     const defaultSettings = {
-        revolutionSpeed: 0.1,
-        rotationSpeed: 0.005,
-        lightIntensity: 1.2,
+        revolutionSpeed: 1,
+        rotationSpeed: 1, // previously 2
+        lightIntensity: 1,
     };
+
     const settings = useRef({ ...defaultSettings });
 
     const getPlanetData = useCallback((name) => {
@@ -50,7 +59,7 @@ const Home = () => {
         if (name === 'Sun') {
             return {
                 name: 'Sun',
-                size: 10,
+                size: 80,
                 selfRotationSpeed: 0.002,
                 texture: getTextureUrl('sun.jpg'),
                 description: 'The Sun is the star at the center of the Solar System. It is a nearly perfect ball of hot plasma, heated to incandescence by nuclear fusion reactions in its core.'
@@ -64,11 +73,15 @@ const Home = () => {
         const scene = new THREE.Scene();
         sceneRef.current = scene;
 
-        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 2000);
-        camera.position.set(150, 150, 100);
+        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 15000);
+        camera.position.set(1000, 1000, 100);
         cameraRef.current = camera;
 
         const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.physicallyCorrectLights = true; // Light realism
+
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.setPixelRatio(window.devicePixelRatio);
         renderer.setClearColor(0x000000);
@@ -80,11 +93,11 @@ const Home = () => {
         controls.dampingFactor = 0.05;
         controls.enableZoom = true;
         controls.enablePan = true;
-        controls.rotateSpeed = 0.5;
+        controls.rotateSpeed = 2;
         controls.zoomSpeed = 0.8;
         controls.panSpeed = 0.8;
-        controls.minDistance = 10;
-        controls.maxDistance = 1000;
+        controls.minDistance = 80;
+        controls.maxDistance = 3000;
         controls.target.set(0, 0, 0);
         controls.update();
         controlsRef.current = controls;
@@ -106,30 +119,47 @@ const Home = () => {
         gui.hide();
         guiRef.current = gui;
 
-        gui.add(settings.current, 'revolutionSpeed', 0, 0.5, 0.001).name('Revolution Speed');
-        gui.add(settings.current, 'rotationSpeed', 0, 0.1, 0.001).name('Self-Rotation Speed');
-        gui.add(settings.current, 'lightIntensity', 0, 5, 0.1).name('Ambient Light').onChange((value) => {
-            if (ambientLightRef.current) {
-                ambientLightRef.current.intensity = value;
-            }
-        });
+        guiControllers.current.revolutionSpeed = gui
+            .add(settings.current, 'revolutionSpeed', 0, 2, 0.001)
+            .name('Revolution Speed');
+
+        guiControllers.current.rotationSpeed = gui
+            .add(settings.current, 'rotationSpeed', 0, 1, 0.001)
+            .name('Self-Rotation Speed');
+
+        guiControllers.current.lightIntensity = gui
+            .add(settings.current, 'lightIntensity', 0, 20, 0.1)
+            .name('Ambient Light')
+            .onChange((value) => {
+                if (ambientLightRef.current) {
+                    ambientLightRef.current.intensity = value;
+                }
+            });
+
 
         gui.add({
             reset: () => {
-                settings.current.revolutionSpeed = defaultSettings.revolutionSpeed;
-                settings.current.rotationSpeed = defaultSettings.rotationSpeed;
-                settings.current.lightIntensity = defaultSettings.lightIntensity;
-                gui.__controllers.forEach(controller => {
-                    controller.setValue(defaultSettings[controller.property]);
+                Object.keys(defaultSettings).forEach((key) => {
+                    settings.current[key] = defaultSettings[key];
+                    guiControllers.current[key]?.setValue(defaultSettings[key]);
                 });
             }
         }, 'reset').name('🔁 Reset Settings');
+
 
         const ambient = new THREE.AmbientLight(0xffffff, settings.current.lightIntensity);
         scene.add(ambient);
         ambientLightRef.current = ambient;
 
-        const pointLight = new THREE.PointLight(0xffffff, 5, 1000);
+        const pointLight = new THREE.PointLight(0xffffff, 2, 300);
+        pointLight.position.set(0, 0, 0);
+        pointLight.castShadow = true;
+        pointLight.shadow.mapSize.width = 2048;
+        pointLight.shadow.mapSize.height = 2048;
+        pointLight.shadow.camera.near = 1;
+        pointLight.shadow.camera.far = 500;
+        scene.add(pointLight);
+
         pointLight.position.set(0, 0, 0);
         scene.add(pointLight);
 
@@ -142,7 +172,7 @@ const Home = () => {
         const loader = new THREE.TextureLoader(manager);
 
         const bgSphere = new THREE.Mesh(
-            new THREE.SphereGeometry(1000, 64, 64),
+            new THREE.SphereGeometry(5000, 64, 64),
             new THREE.MeshBasicMaterial({
                 map: loader.load('/textures/milkyWay.jpeg'),
                 side: THREE.BackSide,
@@ -151,15 +181,31 @@ const Home = () => {
         scene.add(bgSphere);
 
         planetsDataRef.current = [
-            { name: 'Sun', size: 10, selfRotationSpeed: 0.002, texture: '/textures/sun.jpg', description: 'The Sun is the star at the center of the Solar System. It is a nearly perfect ball of hot plasma, heated to incandescence by nuclear fusion reactions in its core.' },
-            { name: 'Mercury', size: 1, distance: 20, revolutionSpeed: 0.01, selfRotationSpeed: 0.015, texture: '/textures/mercury.jpg', description: 'Mercury is the smallest planet...' },
-            { name: 'Venus', size: 1.5, distance: 30, revolutionSpeed: 0.008, selfRotationSpeed: 0.005, texture: '/textures/venus.jpg', description: 'Venus is the second planet...' },
-            { name: 'Earth', size: 1.7, distance: 40, revolutionSpeed: 0.007, selfRotationSpeed: 0.01, texture: '/textures/earth.jpg', description: 'Earth is the third planet...' },
-            { name: 'Mars', size: 1.3, distance: 53, revolutionSpeed: 0.006, selfRotationSpeed: 0.009, texture: '/textures/mars.jpg', description: 'Mars is the fourth planet...' },
-            { name: 'Jupiter', size: 4, distance: 65, revolutionSpeed: 0.004, selfRotationSpeed: 0.02, texture: '/textures/jupiter.jpg', description: 'Jupiter is the fifth planet...' },
-            { name: 'Saturn', size: 3.5, distance: 85, revolutionSpeed: 0.003, selfRotationSpeed: 0.018, texture: '/textures/saturn.jpg', description: 'Saturn is the sixth planet...' },
-            { name: 'Uranus', size: 2.5, distance: 100, revolutionSpeed: 0.002, selfRotationSpeed: 0.008, texture: '/textures/uranus.jpg', description: 'Uranus is the seventh planet...' },
-            { name: 'Neptune', size: 2.4, distance: 110, revolutionSpeed: 0.0015, selfRotationSpeed: 0.007, texture: '/textures/neptune.jpg', description: 'Neptune is the eighth planet...' },
+            { name: 'Sun', size: 150, selfRotationSpeed: 0.04, texture: '/textures/sun.jpg', description: 'The Sun is the star at the center of the Solar System. It is a nearly perfect ball of hot plasma, heated to incandescence by nuclear fusion reactions in its core.' },
+            { name: 'Mercury', size: 10, distance: 130, revolutionSpeed: 0.0100, selfRotationSpeed: 0.005, texture: '/textures/mercury.jpg', description: 'Mercury is the smallest planet...' },
+            { name: 'Venus', size: 25, distance: 240, revolutionSpeed: 0.0039, selfRotationSpeed: 0.00121, texture: '/textures/venus.jpg', description: 'Venus is the second planet...' },
+            {
+                name: 'Earth',
+                size: 40, distance: 333, revolutionSpeed: 0.0024, selfRotationSpeed: 0.005,
+                texture: '/textures/earth.jpg',
+                description: 'Earth is the third planet...',
+                moons: [
+                    {
+                        name: 'Moon',
+                        size: 10, // realistic scale
+                        distance: 60, // from Earth
+                        revolutionSpeed: 0.04,
+                        selfRotationSpeed: 0.001,
+                        texture: '/textures/Moon.jpg',
+                    }
+                ]
+            }
+            ,
+            { name: 'Mars', size: 35, distance: 507, revolutionSpeed: 0.0013, selfRotationSpeed: 0.00486, texture: '/textures/mars.jpg', description: 'Mars is the fourth planet...' },
+            { name: 'Jupiter', size: 60, distance: 800, revolutionSpeed: 0.0002, selfRotationSpeed: 0.02, texture: '/textures/jupiter.jpg', description: 'Jupiter is the fifth planet...' },
+            { name: 'Saturn', size: 40, distance: 1000, revolutionSpeed: 0.000081, selfRotationSpeed: 0.01296, texture: '/textures/saturn.jpg', description: 'Saturn is the sixth planet...' },
+            { name: 'Uranus', size: 50, distance: 1200, revolutionSpeed: 0.000029, selfRotationSpeed: 0.00811, texture: '/textures/uranus.jpg', description: 'Uranus is the seventh planet...' },
+            { name: 'Neptune', size: 50, distance: 1500, revolutionSpeed: 0.000015, selfRotationSpeed: 0.00754, texture: '/textures/neptune.jpg', description: 'Neptune is the eighth planet...' },
         ];
 
         const colorMap = {
@@ -172,17 +218,40 @@ const Home = () => {
             new THREE.SphereGeometry(sunData.size, 64, 64),
             new THREE.MeshBasicMaterial({ map: loader.load(sunData.texture) })
         );
+        sunMesh.castShadow = true;
+        sunMesh.receiveShadow = true;
+
+
         sunMesh.name = 'Sun';
         scene.add(sunMesh);
         sunRef.current = { mesh: sunMesh, data: sunData };
+
+        const spriteMaterial = new THREE.SpriteMaterial({
+            map: loader.load('/textures/sun_glow.png'),
+            color: 0xffaa00,
+            transparent: true,
+            blending: THREE.AdditiveBlending,
+        });
+        const glowSprite = new THREE.Sprite(spriteMaterial);
+        glowSprite.scale.set(sunData.size * 2, sunData.size * 2, 1);
+        sunMesh.add(glowSprite);
+
 
         const planets = [];
 
         planetsDataRef.current.filter(p => p.name !== 'Sun').forEach((planetData) => {
             const texture = loader.load(planetData.texture);
             const geometry = new THREE.SphereGeometry(planetData.size, 64, 64);
-            const material = new THREE.MeshStandardMaterial({ map: texture });
+            const material = new THREE.MeshStandardMaterial({
+                map: texture,
+                metalness: 0.2,
+                roughness: 0.7,
+            });
+            ;
             const mesh = new THREE.Mesh(geometry, material);
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
+
             mesh.name = planetData.name;
             mesh.position.x = planetData.distance;
 
@@ -211,6 +280,38 @@ const Home = () => {
             scene.add(orbit);
 
             scene.add(mesh);
+            // Add moons if any (e.g., Moon around Earth)
+            if (planetData.moons) {
+                planetData.moons.forEach((moonData) => {
+                    const moonTexture = loader.load(moonData.texture);
+                    const moonGeometry = new THREE.SphereGeometry(moonData.size, 32, 32);
+                    const moonMaterial = new THREE.MeshStandardMaterial({
+                        map: moonTexture,
+                        metalness: 0.2,
+                        roughness: 0.7,
+                    });
+
+                    const moonMesh = new THREE.Mesh(moonGeometry, moonMaterial);
+                    moonMesh.castShadow = true;
+                    moonMesh.receiveShadow = true;
+                    moonMesh.name = moonData.name;
+                    moonMesh.position.set(moonData.distance, 0, 0); // Place moon at distance from Earth
+
+                    moonMesh.userData.data = moonData;
+
+                    // Pivot for revolution
+                    const moonPivot = new THREE.Object3D();
+                    moonPivot.userData.angle = Math.random() * Math.PI * 2;
+                    moonPivot.userData.revolutionSpeed = moonData.revolutionSpeed;
+
+                    moonPivot.add(moonMesh);       // Add moon to pivot
+                    mesh.add(moonPivot);           // Add pivot to Earth
+
+                    // Optional reference
+                    planetData.moonPivot = moonPivot;
+                });
+            }
+
             planets.push({ mesh, data: planetData, angle: Math.random() * Math.PI * 2 });
         });
 
@@ -304,9 +405,16 @@ const Home = () => {
             copyScene.add(copyPointLight);
 
             // Create planet copy mesh 
-            const copyGeometry = new THREE.SphereGeometry(planetSize * 0.3, 128, 128);
+            const copyGeometry = new THREE.SphereGeometry(planetData.size, 128, 128);
             const copyMaterial = planetData.name === 'Sun'
-                ? new THREE.MeshBasicMaterial({ map: loader.load(planetData.texture) })
+                ? new THREE.MeshStandardMaterial({
+                    map: loader.load(sunData.texture),
+                    emissive: 0xffaa00,
+                    emissiveIntensity: 1.5,
+                    roughness: 1,
+                    metalness: 0,
+                })
+
                 : new THREE.MeshStandardMaterial({
                     map: loader.load(planetData.texture),
                     roughness: 0.7,
@@ -381,24 +489,69 @@ const Home = () => {
         renderer.domElement.addEventListener('mousemove', handleMouseMove);
         renderer.domElement.addEventListener('click', handleClick);
 
+        let simulatedEarthDays = 0;
+        let lastUpdateTime = performance.now();
+        const secondsPerEarthDay = 0.1; // 1 real second = 10 Earth days → 1 Earth day = 0.1s
+
         const animate = () => {
+            const now = performance.now();
+            const deltaTime = (now - lastUpdateTime) / 1000;
+            lastUpdateTime = now;
+
             animationFrameId.current = requestAnimationFrame(animate);
 
+            // Update ambient light regardless of pause state
             if (ambientLightRef.current) {
                 ambientLightRef.current.intensity = settings.current.lightIntensity;
             }
 
-            planetsMeshesRef.current.forEach((planet) => {
-                planet.mesh.rotation.y += planet.data.selfRotationSpeed * settings.current.rotationSpeed;
-                planet.angle += planet.data.revolutionSpeed * settings.current.revolutionSpeed;
-                planet.mesh.position.x = Math.cos(planet.angle) * planet.data.distance;
-                planet.mesh.position.z = Math.sin(planet.angle) * planet.data.distance;
-            });
+            if (!isPausedRef.current) {
+                simulatedEarthDays += (deltaTime / secondsPerEarthDay) * settings.current.revolutionSpeed;
 
-            if (sunRef.current) {
-                sunRef.current.mesh.rotation.y += sunRef.current.data.selfRotationSpeed * settings.current.rotationSpeed;
+                const earthDayCounter = document.getElementById('earth-day-counter');
+                if (earthDayCounter) {
+                    earthDayCounter.textContent = simulatedEarthDays.toFixed(1);
+                }
+
+                // Animate planets
+                planetsMeshesRef.current.forEach((planet) => {
+                    planet.mesh.rotation.y += planet.data.selfRotationSpeed * settings.current.rotationSpeed;
+                    planet.angle += planet.data.revolutionSpeed * settings.current.revolutionSpeed;
+                    planet.mesh.position.x = Math.cos(planet.angle) * planet.data.distance;
+                    planet.mesh.position.z = Math.sin(planet.angle) * planet.data.distance;
+
+                    // Moons
+                    if (planet.data.moons && planet.mesh.children.length > 0) {
+                        planet.mesh.children.forEach((child) => {
+                            if (child instanceof THREE.Object3D && child.children.length > 0) {
+                                const moon = child.children[0];
+                                if (moon.userData?.data) {
+                                    child.userData.angle += child.userData.revolutionSpeed * settings.current.revolutionSpeed;
+                                    child.rotation.y = child.userData.angle;
+                                    moon.rotation.y += moon.userData.data.selfRotationSpeed * settings.current.rotationSpeed;
+                                }
+                            }
+                        });
+                    }
+
+                    planet.mesh.position.y = Math.sin(planet.angle * 0.3) * 2;
+                });
+
+                // Animate Sun
+                if (sunRef.current) {
+                    sunRef.current.mesh.rotation.y += sunRef.current.data.selfRotationSpeed * settings.current.rotationSpeed;
+                }
+
+                if (sunRef.current?.mesh.material.map) {
+                    sunRef.current.mesh.material.map.offset.x += 0.0002;
+                    sunRef.current.mesh.material.needsUpdate = true;
+                }
+
+                sunRef.current.mesh.material.map.wrapS = THREE.RepeatWrapping;
+                sunRef.current.mesh.material.map.wrapT = THREE.RepeatWrapping;
             }
 
+            // Smooth camera tracking on selected planet (always active)
             if (selectedPlanet) {
                 const selectedMeshObject = planetsMeshesRef.current.find(p => p.mesh.name === selectedPlanet);
                 const mesh = selectedMeshObject?.mesh || sunRef.current?.mesh;
@@ -407,22 +560,20 @@ const Home = () => {
                     const planetWorldPos = new THREE.Vector3();
                     mesh.getWorldPosition(planetWorldPos);
 
-                    // Smooth camera movement towards desired position
                     const desiredCameraPos = new THREE.Vector3().copy(planetWorldPos).add(cameraOffset.current);
-                    cameraRef.current.position.lerp(desiredCameraPos, 0.05); // Adjust the interpolation speed here (0.05 is smooth)
-
-                    // Smooth controls target update
+                    cameraRef.current.position.lerp(desiredCameraPos, 0.05);
                     controlsRef.current.target.lerp(planetWorldPos, 0.05);
                     controlsRef.current.update();
                 }
             }
 
-
             controls.update();
             renderer.render(scene, camera);
         };
 
+
         animate();
+
 
         const handleResize = () => {
             camera.aspect = window.innerWidth / window.innerHeight;
@@ -528,45 +679,65 @@ const Home = () => {
                         {planetInfo?.name === 'Sun' ? (
                             <Sun />
                         ) :
-                            planetInfo?.name === 'Earth' ? (
-                                <Earth />
+                            planetInfo?.name === 'Moon' ? (
+                                <Moon />
                             ) :
-                                planetInfo?.name === 'Jupiter' ? (
-                                    <Jupiter />
+                                planetInfo?.name === 'Earth' ? (
+                                    <Earth />
                                 ) :
-                                    planetInfo?.name === 'Mars' ? (
-                                        <Mars />
+                                    planetInfo?.name === 'Jupiter' ? (
+                                        <Jupiter />
                                     ) :
-                                        planetInfo?.name === 'Mercury' ? (
-                                            <Mercury />
+                                        planetInfo?.name === 'Mars' ? (
+                                            <Mars />
                                         ) :
-                                            planetInfo?.name === 'Neptune' ? (
-                                                <Neptune />
+                                            planetInfo?.name === 'Mercury' ? (
+                                                <Mercury />
                                             ) :
-                                                planetInfo?.name === 'Saturn' ? (
-                                                    <Saturn />
+                                                planetInfo?.name === 'Neptune' ? (
+                                                    <Neptune />
                                                 ) :
-                                                    planetInfo?.name === 'Uranus' ? (
-                                                        <Uranus />
+                                                    planetInfo?.name === 'Saturn' ? (
+                                                        <Saturn />
                                                     ) :
-                                                        planetInfo?.name === 'Venus' ? (
-                                                            <Venus />
-                                                        ) : (
-                                                            <>
-                                                                <div className="text-sm text-gray-300 leading-relaxed">
-                                                                    {planetInfo?.description}
-                                                                </div>
-                                                                <div className="pt-4 border-t border-gray-700">
-                                                                    <p className="text-xs text-gray-500 italic">
-                                                                        Click and drag to explore • ESC to close
-                                                                    </p>
-                                                                </div>
-                                                            </>
-                                                        )}
+                                                        planetInfo?.name === 'Uranus' ? (
+                                                            <Uranus />
+                                                        ) :
+                                                            planetInfo?.name === 'Venus' ? (
+                                                                <Venus />
+                                                            ) : (
+                                                                <>
+                                                                    <div className="text-sm text-gray-300 leading-relaxed">
+                                                                        {planetInfo?.description}
+                                                                    </div>
+                                                                    <div className="pt-4 border-t border-gray-700">
+                                                                        <p className="text-xs text-gray-500 italic">
+                                                                            Click and drag to explore • ESC to close
+                                                                        </p>
+                                                                    </div>
+                                                                </>
+                                                            )}
                     </div>
 
                 </div>
             </div>
+            <div className="absolute top-4 left-4 z-50 bg-black bg-opacity-70 text-white px-4 py-2 rounded shadow text-sm font-mono flex items-center gap-4">
+                Earth Days: <span id="earth-day-counter">0</span>
+                <button
+                    onClick={() => {
+                        setIsPaused((prev) => {
+                            isPausedRef.current = !prev;  // <- keep ref in sync
+                            return !prev;
+                        });
+                    }}
+                    className="ml-2 bg-gray-800 text-white px-3 py-1 rounded hover:bg-gray-700 transition"
+                >
+                    {isPaused ? '▶ Play' : '❚❚ Pause'}
+                </button>
+
+            </div>
+
+
         </div>
     );
 };
